@@ -5,5 +5,12 @@
   "description": "Exports bookmarks and open tabs to a centralised folder",
   "author": "Pierre Laperdrix",
   "license": "MPL 2.0",
-  "version": "0.1"
+  "version": "0.1",
+  "preferences": [{
+        "name": "dataPath",
+        "title": "Storage path",
+        "description": "Path to JSON data file",
+        "type": "directory",
+        "value": "~"
+   }]
 }
