@@ -6,11 +6,20 @@
   "author": "Pierre Laperdrix",
   "license": "MPL 2.0",
   "version": "0.1",
-  "preferences": [{
+  "preferences": [
+	{
         "name": "dataPath",
         "title": "Storage path",
         "description": "Path to JSON data file",
         "type": "directory",
         "value": "~"
-   }]
+   	},
+	{
+	"name": "passwordStorage",
+        "title": "Enable passwords storage",
+        "description": "If this option is enabled, the user will need to enter a Master Password to securely encrypt his passwords.",
+        "type": "bool",
+	"value": false
+	}
+  ]
 }
