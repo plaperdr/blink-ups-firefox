@@ -5,21 +5,22 @@
   "description": "Exports bookmarks and open tabs to a centralised folder",
   "author": "Pierre Laperdrix",
   "license": "MPL 2.0",
-  "version": "0.3",
+  "version": "0.4",
   "preferences": [
+	
 	{
-        "name": "dataPath",
-        "title": "Storage path",
-        "description": "Path to JSON data file",
-        "type": "directory",
-        "value": "~"
-   	},
-	{
-	"name": "passwordStorage",
+		"name": "passwordStorage",
         "title": "Enable passwords storage",
+        "description": "If this option is enabled, passwords will be stored in the data file. If encryption is disabled, passwords will be stored in plaintext.",
+        "type": "bool",
+		"value": false
+	},
+	{
+        "name": "passwordEncryption",
+        "title": "Enable passwords encryption",
         "description": "If this option is enabled, the user will need to enter a Master Password to securely encrypt his passwords.",
         "type": "bool",
-	"value": false
-	}
+        "value": false
+   	}
   ]
 }
