@@ -2,10 +2,10 @@
   "name": "cip",
   "title": "Centralized Information Provider",
   "id": "jid1-d1BM58Kj2zuEUg",
-  "description": "Exports bookmarks and open tabs to a centralised folder",
+  "description": "Exports bookmarks, passwords and open tabs to a centralised folder",
   "author": "Pierre Laperdrix",
   "license": "MPL 2.0",
-  "version": "0.4",
+  "version": "0.5",
   "preferences": [
 	
 	{
