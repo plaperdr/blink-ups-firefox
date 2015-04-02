@@ -3,7 +3,7 @@
   "title": "User-Profile Sync",
   "id": "jid1-d1BM58Kj2zuEUg@jetpack",
   "description": "Profile synchronisation extension for Blink",
-  "author": "Blink",
+  "author": "Pierre Laperdrix",
   "license": "MPL 2.0",
   "version": "0.12.1",
   "preferences": [
