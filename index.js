@@ -1,5 +1,10 @@
 /*************** DECLARATIONS ***************/ 
-var {components, Cc, Ci, Cu} = require("chrome");
+var {Cc, Ci, Cu} = require("chrome");
+var tabs = require("sdk/tabs");
+var simplePrefs = require("sdk/simple-prefs");
+var prefs = require("sdk/preferences/service");
+var { ActionButton } = require("sdk/ui/button/action");
+
 Cu.import("resource://gre/modules/XPCOMUtils.jsm", this);
 
 var Application = Cc["@mozilla.org/fuel/application;1"].getService(Ci.fuelIApplication);
@@ -9,13 +14,13 @@ var bookmarks = Cc["@mozilla.org/browser/nav-bookmarks-service;1"]
 	.getService(Ci.nsINavBookmarksService);
 var passwordManager = Cc["@mozilla.org/login-manager;1"]
 	.getService(Ci.nsILoginManager);
-var tabs = require("sdk/tabs");
+
 
 var dataPath = "/home/blink/profile/data.json";
 var passwordStorage = false;
-require("sdk/simple-prefs").prefs.passwordStorage = passwordStorage;
+simplePrefs.prefs.passwordStorage = passwordStorage;
 var passwordEncryption = false;
-require("sdk/simple-prefs").prefs.passwordEncryption = passwordEncryption;
+simplePrefs.prefs.passwordEncryption = passwordEncryption;
 var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false, "passwordEncryption" : false, "browser":"Firefox"};
 var importJSONData;
 var write = true;
@@ -29,6 +34,60 @@ let action = {
 	 }
   }
 };
+
+/*************** TOR BUTTON ***************/
+const disabledState = {
+	"label": "Tor disabled",
+	"icon": {
+		"16": "./tor-disabled-16.png",
+		"32": "./tor-disabled-24.png"
+	}
+};
+
+const enabledState = {
+	"label": "Tor enabled",
+	"icon": {
+		"16": "./tor-enabled-16.png",
+		"32": "./tor-enabled-24.png"
+	}
+};
+
+//Default State is the disabled state
+var torButton = ActionButton({
+	id: "tor-button",
+	label: "Tor disabled",
+	icon: {
+		"16": "./tor-disabled-16.png",
+		"32": "./tor-disabled-24.png"
+	},
+	onClick: function(state){
+		if (torButton.label == "Tor disabled") {
+			console.log("Disabling Tor proxy");
+			//Redirect to the Tor proxy
+			prefs.set("network.proxy.type", 1);
+			prefs.set("network.proxy.socks", "localhost");
+			prefs.set("network.proxy.socks_port", 9050);
+			prefs.set("network.proxy.no_proxies_on", "localhost, 127.0.0.1");
+			prefs.set("network.proxy.socks_version", 5);
+			prefs.set("network.proxy.socks_remote_dns", true);
+
+			//Change the state of the button
+			torButton.state(torButton, enabledState);
+		}
+		else {
+            console.log("Enabling Tor proxy");
+			//Remove the redirection to the Tor proxy
+			prefs.set("network.proxy.socks", "");
+			prefs.set("network.proxy.socks_port", 0);
+			prefs.set("network.proxy.no_proxies_on", "");
+			prefs.set("network.proxy.socks_remote_dns", false);
+
+			//Change the state of the button
+			torButton.state(torButton, disabledState);
+		}
+	}
+});
+
 
 /*************** PREFERENCES ***************/ 
 
@@ -319,4 +378,4 @@ tabs.on('ready', writeJSONFile);
 tabs.on('close', writeJSONFile);
 
 //Defining observer for prefs changes
-require("sdk/simple-prefs").on("", writeJSONFile);
+simplePrefs.on("", writeJSONFile);
