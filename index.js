@@ -5,6 +5,7 @@ var simplePrefs = require("sdk/simple-prefs");
 var prefs = require("sdk/preferences/service");
 var { ActionButton } = require("sdk/ui/button/action");
 var pageWorkers = require("sdk/page-worker");
+var self = require("sdk/self");
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm", this);
 
@@ -22,8 +23,8 @@ var passwordStorage = false;
 simplePrefs.prefs.passwordStorage = passwordStorage;
 var passwordEncryption = false;
 simplePrefs.prefs.passwordEncryption = passwordEncryption;
-var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false, "passwordEncryption" : false, "browser":"Firefox"};
 var importJSONData;
+var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false, "passwordEncryption" : false, "browser":"Firefox"};
 var write = true;
 var expID;
 
