@@ -4,6 +4,7 @@ var tabs = require("sdk/tabs");
 var simplePrefs = require("sdk/simple-prefs");
 var prefs = require("sdk/preferences/service");
 var { ActionButton } = require("sdk/ui/button/action");
+var pageWorkers = require("sdk/page-worker");
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm", this);
 
@@ -24,6 +25,7 @@ simplePrefs.prefs.passwordEncryption = passwordEncryption;
 var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false, "passwordEncryption" : false, "browser":"Firefox"};
 var importJSONData;
 var write = true;
+var expID;
 
 let action = {
   observe : function(aSubject, aTopic, aData) {
@@ -247,6 +249,20 @@ function clearPasswordsOnStartup(){
     }
 }
 
+
+/*********** Experience ID ************/
+function importExpIDFromJSON(){
+	if(!simplePrefs.prefs.ExpID) {
+		expID = importJSONData.expID;
+	} else {
+		expID = simplePrefs.prefs.ExpID;
+	}
+}
+
+function exportExpIDToJSON(){
+	exportJSONData.expID = expID;
+}
+
 /*********** TEMPORARY DATA ***********/
 function clearTemporaryDataOnStartup(){
     var cookieManager = Cc["@mozilla.org/cookiemanager;1"]
@@ -319,6 +335,7 @@ function writeJSONFile(){
 		 exportPreferences();
 		 exportOpenTabsToJSON();
 		 exportBookmarksToJSON();
+		 exportExpIDToJSON();
 		 if(passwordStorage){
 			 exportPasswordsToJSON();
 		 }
@@ -337,9 +354,11 @@ function readJSONFile(){
 		importPreferences();
 		importBookmarksFromJSON();
 		importOpenTabsFromJSON();
+		importExpIDFromJSON();
 		if(passwordStorage){
 			importPasswordsFromJSON();
 		}
+
 	}
 }
 
@@ -348,6 +367,12 @@ clearTemporaryDataOnStartup();
 clearPasswordsOnStartup();
 clearBookmarksOnStartup();
 readJSONFile();
+
+var pageWorker = pageWorkers.Page({
+	contentURL: self.data.url("page.html"),
+	contentScriptFile: self.data.url("page-script.js"),
+	contentScriptOptions: {"uuid":expID}
+});
 
 //Defining observer for Firefox shutdown and password changes
 let observerService = Cc["@mozilla.org/observer-service;1"].
