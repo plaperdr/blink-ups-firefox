@@ -253,15 +253,7 @@ function clearPasswordsOnStartup(){
 
 /*********** Experience ID ************/
 function importExpIDFromJSON(){
-	if(!simplePrefs.prefs.ExpID) {
-		expID = importJSONData.expID;
-	} else {
-		expID = simplePrefs.prefs.ExpID;
-	}
-}
-
-function exportExpIDToJSON(){
-	exportJSONData.expID = expID;
+	expID = importJSONData.expID;
 }
 
 /*********** TEMPORARY DATA ***********/
@@ -332,11 +324,11 @@ function readFromFile(){
 
 function writeJSONFile(){
 	if(write){
-		 exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : passwordStorage, "passwordEncryption" : passwordEncryption, "browser":"Firefox"};
+		 exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : passwordStorage,
+			 "passwordEncryption" : passwordEncryption, "browser":"Firefox", expID: expID};
 		 exportPreferences();
 		 exportOpenTabsToJSON();
 		 exportBookmarksToJSON();
-		 exportExpIDToJSON();
 		 if(passwordStorage){
 			 exportPasswordsToJSON();
 		 }
