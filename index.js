@@ -1,9 +1,11 @@
-/*************** DECLARATIONS ***************/ 
+/*************** DECLARATIONS ***************/
 var {Cc, Ci, Cu} = require("chrome");
 var tabs = require("sdk/tabs");
 var simplePrefs = require("sdk/simple-prefs");
 var prefs = require("sdk/preferences/service");
-var { ActionButton } = require("sdk/ui/button/action");
+var panels = require("sdk/panel");
+var system = require("sdk/system");
+var { ToggleButton } = require('sdk/ui/button/toggle');
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm", this);
 
@@ -16,12 +18,21 @@ var passwordManager = Cc["@mozilla.org/login-manager;1"]
 	.getService(Ci.nsILoginManager);
 
 
-var dataPath = "/home/blink/profile/data.json";
+//var dataPath = "/home/blink/profile/data.json";
+//var dataPath = "/home/plaperdr/Downloads/firefox-45b/data.json";
+var dataPath = "/home/plaperdr/Downloads/firefox-46a/data.json";
 var passwordStorage = false;
 simplePrefs.prefs.passwordStorage = passwordStorage;
 var passwordEncryption = false;
 simplePrefs.prefs.passwordEncryption = passwordEncryption;
-var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false, "passwordEncryption" : false, "browser":"Firefox"};
+var proxy = false;
+simplePrefs.prefs.proxy = proxy;
+var refresh = false;
+var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false,
+	"passwordEncryption" : false, "browser":"Firefox",
+	"proxy" : false, "refresh" : false
+};
+
 var importJSONData;
 var write = true;
 
@@ -35,83 +46,125 @@ let action = {
   }
 };
 
-/*************** TOR BUTTON ***************/
-const disabledState = {
-	"label": "Tor disabled",
-	"icon": {
-		"16": "./tor-disabled-16.png",
-		"32": "./tor-disabled-24.png"
-	}
-};
-
-const enabledState = {
-	"label": "Tor enabled",
-	"icon": {
-		"16": "./tor-enabled-16.png",
-		"32": "./tor-enabled-24.png"
-	}
-};
-
-//Default State is the disabled state
-var torButton = ActionButton({
-	id: "tor-button",
-	label: "Tor disabled",
-	icon: {
-		"16": "./tor-disabled-16.png",
-		"32": "./tor-disabled-24.png"
+/*************** PANEL ***************/
+var panel = panels.Panel({
+	height: 400,
+	width: 370,
+	contentURL: "./panel.html",
+	contentScriptFile:  [
+		"./dependencies/jquery-2.2.0.min.js",
+		"./dependencies/materialize.min.js",
+		"./panel.js"
+	],
+	contentStyleFile: [
+		"./dependencies/materialize.min.css",
+		"./panel.css"
+	],
+	contentScriptOptions: {
+		"proxy" : simplePrefs.prefs.proxy
 	},
-	onClick: function(state){
-		if (torButton.label == "Tor disabled") {
-			console.log("Disabling Tor proxy");
-			//Redirect to the Tor proxy
-			prefs.set("network.proxy.type", 1);
-			prefs.set("network.proxy.socks", "localhost");
-			prefs.set("network.proxy.socks_port", 9050);
-			prefs.set("network.proxy.no_proxies_on", "localhost, 127.0.0.1");
-			prefs.set("network.proxy.socks_version", 5);
-			prefs.set("network.proxy.socks_remote_dns", true);
-
-			//Change the state of the button
-			torButton.state(torButton, enabledState);
-		}
-		else {
-            console.log("Enabling Tor proxy");
-			//Remove the redirection to the Tor proxy
-			prefs.set("network.proxy.socks", "");
-			prefs.set("network.proxy.socks_port", 0);
-			prefs.set("network.proxy.no_proxies_on", "");
-			prefs.set("network.proxy.socks_remote_dns", false);
-
-			//Change the state of the button
-			torButton.state(torButton, disabledState);
-		}
-	}
+	onHide: handleHide
 });
 
+var button = ToggleButton({
+	id: "blink-button",
+	label: "Blink dashboard",
+	icon: {
+		"16": "./imgs/icon-square.png",
+		"32": "./imgs/icon-square.png",
+		"64": "./imgs/icon-square.png"
+	},
+	onChange: handleChange
+});
+
+function handleChange(state) {
+	if (state.checked) {
+		panel.show({
+			position: button
+		});
+	}
+}
+
+function handleHide() {
+	button.state('window', {checked: false});
+}
+
+function activateTorProxy(){
+	//Redirect to the Tor proxy
+	prefs.set("network.proxy.type", 1);
+	prefs.set("network.proxy.socks", "localhost");
+	prefs.set("network.proxy.socks_port", 9050);
+	prefs.set("network.proxy.no_proxies_on", "localhost, 127.0.0.1");
+	prefs.set("network.proxy.socks_version", 5);
+	prefs.set("network.proxy.socks_remote_dns", true);
+
+	panel.port.emit("verifyTor",{});
+}
+
+function deactivateTorProxy(){
+	//Remove the redirection to the Tor proxy
+	prefs.set("network.proxy.socks", "");
+	prefs.set("network.proxy.socks_port", 0);
+	prefs.set("network.proxy.no_proxies_on", "");
+	prefs.set("network.proxy.socks_remote_dns", false);
+
+	proxy = false;
+	simplePrefs.prefs.proxy = false;
+}
+
+function refreshFingerprint(){
+	refresh = true;
+	writeJSONFile();
+
+	var windows = require("sdk/windows").browserWindows;
+	for (let window of windows) {
+		window.close();
+	}
+}
+
+function viewFingerprint(){
+	tabs.open("https://amiunique.org/viewFP/");
+}
+
+function connectedState(){
+	proxy = true;
+	simplePrefs.prefs.proxy = true;
+}
+
+panel.port.on("activateTorProxy", activateTorProxy);
+panel.port.on("deactivateTorProxy", deactivateTorProxy);
+panel.port.on("refreshFingerprint",refreshFingerprint);
+panel.port.on("viewFingerprint",viewFingerprint);
+panel.port.on("connected",connectedState);
 
 /*************** PREFERENCES ***************/ 
 
 function onPasswordStorageChange(){
-	passwordStorage =  require("sdk/simple-prefs").prefs.passwordStorage;
+	passwordStorage =  simplePrefs.prefs.passwordStorage;
 }
 
 function onPasswordEncryptionChange(){
-	passwordEncryption =  require("sdk/simple-prefs").prefs.passwordEncryption;
+	passwordEncryption =  simplePrefs.prefs.passwordEncryption;
 }
 
-require("sdk/simple-prefs").on("passwordStorage", onPasswordStorageChange);
-require("sdk/simple-prefs").on("passwordEncryption", onPasswordEncryptionChange);
+simplePrefs.on("passwordStorage", onPasswordStorageChange);
+simplePrefs.on("passwordEncryption", onPasswordEncryptionChange);
 
 function importPreferences(){
 	passwordStorage = importJSONData.passwordStorage;
-	require("sdk/simple-prefs").prefs.passwordStorage = passwordStorage;
+	simplePrefs.prefs.passwordStorage = passwordStorage;
 	passwordEncryption = importJSONData.passwordEncryption;
-	require("sdk/simple-prefs").prefs.passwordEncryption = passwordEncryption;
+	simplePrefs.prefs.passwordEncryption = passwordEncryption;
+	proxy = importJSONData.proxy;
+	simplePrefs.prefs.proxy = proxy;
+
+	if(proxy) activateTorProxy();
 }
 
 function exportPreferences(){
 	exportJSONData.passwordStorage = passwordStorage;
 	exportJSONData.passwordEncryption = passwordEncryption;
+	exportJSONData.proxy = proxy;
 }
 
 /*************** BOOKMARKS ***************/ 
@@ -300,14 +353,14 @@ function readFromFile(){
 	if(file.exists()){
 		fstream.init(file, -1, 0, 0);
 		cstream.init(fstream, "UTF-8", 0, 0); // you can use another encoding here if you wish
-	
-		let (str = {}) {
-		  let read = 0;
-		  do { 
+
+		let str = {};
+		let read = 0;
+		do {
 		    read = cstream.readString(0xffffffff, str); // read as much as we can and put it in str.value
 		    data += str.value;
-		  } while (read != 0);
-		}
+		} while (read != 0);
+
 		cstream.close(); // this closes fstream
 	}
 	return data;
@@ -315,7 +368,10 @@ function readFromFile(){
 
 function writeJSONFile(){
 	if(write){
-		 exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : passwordStorage, "passwordEncryption" : passwordEncryption, "browser":"Firefox"};
+		 exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : passwordStorage,
+			 "passwordEncryption" : passwordEncryption, "browser":"Firefox",
+			 "proxy" : proxy, "refresh" : refresh
+		 };
 		 exportPreferences();
 		 exportOpenTabsToJSON();
 		 exportBookmarksToJSON();
