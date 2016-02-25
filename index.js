@@ -18,9 +18,7 @@ var passwordManager = Cc["@mozilla.org/login-manager;1"]
 	.getService(Ci.nsILoginManager);
 
 
-//var dataPath = "/home/blink/profile/data.json";
-//var dataPath = "/home/plaperdr/Downloads/firefox-45b/data.json";
-var dataPath = "/home/plaperdr/Downloads/firefox-46a/data.json";
+var dataPath = "/home/blink/profile/data.json";
 var passwordStorage = false;
 simplePrefs.prefs.passwordStorage = passwordStorage;
 var passwordEncryption = false;
@@ -123,7 +121,7 @@ function refreshFingerprint(){
 }
 
 function viewFingerprint(){
-	tabs.open("https://amiunique.org/viewFP/");
+	tabs.open("https://amiunique.org/viewFP");
 }
 
 function connectedState(){
