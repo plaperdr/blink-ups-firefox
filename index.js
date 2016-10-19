@@ -8,12 +8,8 @@ var system = require("sdk/system");
 var { ToggleButton } = require('sdk/ui/button/toggle');
 
 Cu.import("resource://gre/modules/XPCOMUtils.jsm", this);
-
-var Application = Cc["@mozilla.org/fuel/application;1"].getService(Ci.fuelIApplication);
 Cu.import("resource://gre/modules/NetUtil.jsm");
 Cu.import("resource://gre/modules/FileUtils.jsm");
-var bookmarks = Cc["@mozilla.org/browser/nav-bookmarks-service;1"]
-	.getService(Ci.nsINavBookmarksService);
 var passwordManager = Cc["@mozilla.org/login-manager;1"]
 	.getService(Ci.nsILoginManager);
 
@@ -26,11 +22,7 @@ simplePrefs.prefs.passwordEncryption = passwordEncryption;
 var proxy = false;
 simplePrefs.prefs.proxy = proxy;
 var refresh = false;
-var exportJSONData = {"bookmarks": [],"openTabs": [], "passwords":[], "passwordStorage" : false,
-	"passwordEncryption" : false, "browser":"Firefox",
-	"proxy" : false, "refresh" : false
-};
-
+var exportJSONData;
 var importJSONData;
 var write = true;
 
@@ -159,75 +151,6 @@ function importPreferences(){
 	if(proxy) activateTorProxy();
 }
 
-function exportPreferences(){
-	exportJSONData.passwordStorage = passwordStorage;
-	exportJSONData.passwordEncryption = passwordEncryption;
-	exportJSONData.proxy = proxy;
-}
-
-/*************** BOOKMARKS ***************/ 
-function importBookmarksFromJSON(){
-	exploreAndImportTree(importJSONData.bookmarks[0].children,Application.bookmarks.toolbar);
-	exploreAndImportTree(importJSONData.bookmarks[1].children,Application.bookmarks.menu);
-	exploreAndImportTree(importJSONData.bookmarks[2].children,Application.bookmarks.unfiled);
-}
-
-function exploreAndImportTree(JSONNode,currentNode){
-	var i;
-	for(i=0; i<JSONNode.length ; i++){
-		if(typeof JSONNode[i].children == "undefined"){
-			var bookmarkURI = Cc["@mozilla.org/network/io-service;1"]
-				.getService(Ci.nsIIOService)
-				.newURI(JSONNode[i].url, null, null);
-			currentNode.addBookmark(JSONNode[i].name, bookmarkURI);
-		} else {
-			var childrenNode = currentNode.addFolder(JSONNode[i].name);
-			exploreAndImportTree(JSONNode[i].children,childrenNode);
-		}
-	}
-}
-
-function exportBookmarksToJSON(){
-	var toolbarData = exploreAndExportTree(Application.bookmarks.toolbar);
-	exportJSONData.bookmarks.push(toolbarData);
-	var menuData = exploreAndExportTree(Application.bookmarks.menu);
-	exportJSONData.bookmarks.push(menuData);
-	var unfilteredData = exploreAndExportTree(Application.bookmarks.unfiled);
-	exportJSONData.bookmarks.push(unfilteredData);
-}
-
-function exploreAndExportTree(currentNode){
-	if(currentNode.type == "folder"){
-		var tab = [];
-		var children = currentNode.children;
-		if(typeof children != "undefined"){
-			var i;
-			for(i=0; i<children.length ; i++){
-				tab.push(exploreAndExportTree(children[i]));
-			}
-		}
-		return {name: currentNode.title, children: tab, type:"folder"};
-	} else {
-		return {name: currentNode.title, url: currentNode.uri.spec, type:"url"};
-	}
-}
-
-
-function clearBookmarksOnStartup(){
-	var tab1 = Application.bookmarks.toolbar.children;
-	for(i=0; i< tab1.length; i++){
-		tab1[i].remove();
-	}
-	var tab2 = Application.bookmarks.menu.children;
-	for(i=0; i< tab2.length; i++){
-		tab2[i].remove();
-	}
-	var tab3 = Application.bookmarks.unfiled.children;
-	for(i=0; i< tab3.length; i++){
-		tab3[i].remove();
-	}
-}
-
 /*************** OPEN TABS ***************/ 
 function importOpenTabsFromJSON(){
 	var i;
@@ -262,7 +185,7 @@ function exportOpenTabsToJSON(){
 
 /*************** PASSWORDS ***************/
 function importPasswordsFromJSON(){
-	for(i=0 ; i<importJSONData.passwords.length ; i++){
+	for(var i=0 ; i<importJSONData.passwords.length ; i++){
 		var hostname = importJSONData.passwords[i].hostname;
 		var formSubmitURL = importJSONData.passwords[i].formSubmitURL;
 		var username = importJSONData.passwords[i].username;
@@ -370,9 +293,7 @@ function writeJSONFile(){
 			 "passwordEncryption" : passwordEncryption, "browser":"Firefox",
 			 "proxy" : proxy, "refresh" : refresh
 		 };
-		 exportPreferences();
 		 exportOpenTabsToJSON();
-		 exportBookmarksToJSON();
 		 if(passwordStorage){
 			 exportPasswordsToJSON();
 		 }
@@ -389,7 +310,6 @@ function readJSONFile(){
 	if(dataText != ""){
 		importJSONData = JSON.parse(dataText);
 		importPreferences();
-		importBookmarksFromJSON();
 		importOpenTabsFromJSON();
 		if(passwordStorage){
 			importPasswordsFromJSON();
@@ -400,7 +320,6 @@ function readJSONFile(){
 /*************** MAIN ***************/
 clearTemporaryDataOnStartup();
 clearPasswordsOnStartup();
-clearBookmarksOnStartup();
 readJSONFile();
 
 //Defining observer for Firefox shutdown and password changes
@@ -409,24 +328,6 @@ let observerService = Cc["@mozilla.org/observer-service;1"].
 observerService.addObserver(action, "passwordmgr-storage-changed", false);
 observerService.addObserver(action, "quit-application-requested", false);
 
-//Defining observer for bookmark changes
-var bookmarkObserver = {
-  onItemAdded: function(aItemId, aFolder, aIndex) {
-    writeJSONFile();
-  },
-  onItemChanged: function(aItemId, aProperty, aIsAnnotationProperty, aNewValue, aLastModified, aItemType, aParentId, aGUID, aParentGUID) {
-    writeJSONFile();
-  },
-  onItemMoved: function(aItemId, aOldParentId, aOldIndex, aNewParentId, aNewIndex, aItemType, aGUID, aOldParentGUID, aNewParentGUID) {
-    writeJSONFile();
-  },
-  onItemRemoved: function(aItemId, aParentId, aIndex, aItemType, aURI, aGUID, aParentGUID) {
-    writeJSONFile();
-  },
-  QueryInterface: XPCOMUtils.generateQI([Ci.nsINavBookmarkObserver])
-};
-bookmarks.addObserver(bookmarkObserver, false); 
- 
 //Defining observer for open tabs changes
 tabs.on('ready', writeJSONFile);
 tabs.on('close', writeJSONFile);
